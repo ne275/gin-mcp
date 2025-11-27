@@ -429,17 +429,16 @@ func (m *GinMCP) SetupServer() error {
 		}
 	}
 
-	// 转换注册的路由为工具
-	tools, err := convert.ConvertRoutesToTools(registeredRoutes, m.registeredSchemas)
-	if err != nil {
-		return fmt.Errorf("failed to convert routes to tools: %w", err)
-	}
+    // 转换注册的路由为工具
+    tools, operations := convert.ConvertRoutesToTools(registeredRoutes, m.registeredSchemas)
 
-	m.toolsMu.Lock()
-	m.tools = tools
-	m.toolsMu.Unlock()
+    // 更新工具和操作
+    m.toolsMu.Lock()
+    m.tools = tools
+    m.operations = operations
+    m.toolsMu.Unlock()
 
-	return nil
+    return nil
 }
 
 // ExecuteToolWithDynamicURL executes a tool with a dynamically resolved baseURL.

@@ -156,11 +156,6 @@ func (m *GinMCP) Mount(mountPath string, filterUntagged bool) {
 		return
 	}
 
-	// 如果需要过滤未标记的工具，调用 filterTools 方法
-	if filterUntagged {
-		m.filterTools()
-	}
-
 	// 2. Create transport and register handlers
 	m.transport = transport.NewSSETransport(mountPath)
 	m.transport.RegisterHandler("initialize", m.handleInitialize)

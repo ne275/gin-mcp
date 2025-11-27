@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -144,7 +143,7 @@ func (m *GinMCP) RegisterSchema(method string, path string, queryType interface{
 }
 
 // Mount sets up the MCP routes on the given path
-func (m *GinMCP) Mount(mountPath string) {
+func (m *GinMCP) Mount(mountPath string, filterUntagged bool) {
 	if mountPath == "" {
 		mountPath = "/mcp"
 	}
@@ -155,6 +154,11 @@ func (m *GinMCP) Mount(mountPath string) {
 			log.Printf("Failed to setup server: %v", err)
 		}
 		return
+	}
+
+	// 如果需要过滤未标记的工具，调用 filterTools 方法
+	if filterUntagged {
+		m.filterTools()
 	}
 
 	// 2. Create transport and register handlers
@@ -730,7 +734,7 @@ func (m *GinMCP) executeToolLogic(operation types.Operation, parameters map[stri
 	defer resp.Body.Close()
 
 	// 4. Read and parse the response
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		if isDebugMode() {
 			log.Printf("[Tool Execution] Error reading response body: %v", err)

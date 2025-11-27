@@ -1,7 +1,9 @@
 # Gin-MCP: Zero-Config Gin to MCP Bridge
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/ckanthony/gin-mcp.svg)](https://pkg.go.dev/github.com/ckanthony/gin-mcp)
-[![CI](https://github.com/ckanthony/gin-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/ckanthony/gin-mcp/actions/workflows/ci.yml)
+# !!! This is for personal use, visit https://github.com/ckanthony/gin-mcp for package !
+
+[![Go Reference](https://pkg.go.dev/badge/github.com/ne275/gin-mcp.svg)](https://pkg.go.dev/github.com/ne275/gin-mcp)
+[![CI](https://github.com/ne275/gin-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/ne275/gin-mcp/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/ckanthony/gin-mcp/branch/main/graph/badge.svg)](https://codecov.io/gh/ckanthony/gin-mcp)
 ![](https://badge.mcpx.dev?type=dev 'MCP Dev')
 
@@ -48,7 +50,7 @@
 ## Installation
 
 ```bash
-go get github.com/ckanthony/gin-mcp
+go get github.com/ne275/gin-mcp
 ```
 
 ## Basic Usage: Instant MCP Server
@@ -61,7 +63,7 @@ package main
 import (
 	"net/http"
 
-	server "github.com/ckanthony/gin-mcp/"
+	server "github.com/ne275/gin-mcp/"
 	"github.com/gin-gonic/gin"
 )
 
@@ -90,7 +92,7 @@ func main() {
 	})
 
 	// 4. Mount the MCP server endpoint
-	mcp.Mount("/mcp") // MCP clients will connect here
+	mcp.Mount("/mcp", false) // MCP clients will connect here
 
 	// 5. Run your Gin server
 	r.Run(":8080") // Gin server runs as usual
@@ -164,7 +166,7 @@ package main
 
 import (
 	// ... other imports
-	"github.com/ckanthony/gin-mcp/pkg/server"
+	"github.com/ne275/gin-mcp/pkg/server"
 	"github.com/gin-gonic/gin"
 )
 
@@ -207,7 +209,7 @@ func main() {
 	// You can register schemas for other methods/routes as needed
 	// e.g., mcp.RegisterSchema("PUT", "/products/:id", nil, UpdateProductRequest{})
 
-	mcp.Mount("/mcp")
+	mcp.Mount("/mcp", false)
 	r.Run(":8080")
 }
 ```

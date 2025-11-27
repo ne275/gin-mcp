@@ -39,6 +39,7 @@ type GinMCP struct {
 	config            *Config
 	registeredSchemas map[string]types.RegisteredSchemaInfo
 	schemasMu         sync.RWMutex
+	toolsMu           sync.RWMutex // 用于保护 tools 的并发访问
 	// executeToolFunc holds the function used to execute a tool.
 	// It defaults to defaultExecuteTool but can be overridden for testing.
 	executeToolFunc func(operationID string, parameters map[string]interface{}) (interface{}, error)
@@ -143,7 +144,7 @@ func (m *GinMCP) RegisterSchema(method string, path string, queryType interface{
 }
 
 // Mount sets up the MCP routes on the given path
-func (m *GinMCP) Mount(mountPath string, filterUntagged bool) {
+func (m *GinMCP) Mount(mountPath string) {
 	if mountPath == "" {
 		mountPath = "/mcp"
 	}
@@ -155,6 +156,14 @@ func (m *GinMCP) Mount(mountPath string, filterUntagged bool) {
 		}
 		return
 	}
+
+	// 过滤未注册的路由
+	filteredRoutes := make(map[string]types.RegisteredSchemaInfo)
+	m.schemasMu.RLock()
+	for route, schema := range m.registeredSchemas {
+		filteredRoutes[route] = schema
+	}
+	m.schemasMu.RUnlock()
 
 	// 2. Create transport and register handlers
 	m.transport = transport.NewSSETransport(mountPath)
@@ -408,157 +417,29 @@ func (m *GinMCP) handleToolCall(msg *types.MCPMessage) *types.MCPMessage {
 
 // SetupServer initializes the MCP server by discovering routes and converting them to tools
 func (m *GinMCP) SetupServer() error {
-	if len(m.tools) == 0 {
-		// Get all routes from the Gin engine
-		routes := m.engine.Routes()
+	m.schemasMu.RLock()
+	defer m.schemasMu.RUnlock()
 
-		// Lock schema map while converting
-		m.schemasMu.RLock()
-		// Convert routes to tools with registered types
-		newTools, operations := convert.ConvertRoutesToTools(routes, m.registeredSchemas)
-		m.schemasMu.RUnlock()
-
-		// Check if tools have changed
-		toolsChanged := m.haveToolsChanged(newTools)
-
-		// Update tools and operations
-		m.tools = newTools
-		m.operations = operations
-
-		// Filter tools based on configuration (operation/tag filters)
-		m.filterTools()
-
-		// Notify clients if tools have changed
-		if toolsChanged && m.transport != nil {
-			m.transport.NotifyToolsChanged()
+	// 过滤已注册的路由
+	registeredRoutes := make(gin.RoutesInfo, 0)
+	for _, route := range m.engine.Routes() {
+		schemaKey := route.Method + " " + route.Path
+		if _, exists := m.registeredSchemas[schemaKey]; exists {
+			registeredRoutes = append(registeredRoutes, route)
 		}
 	}
+
+	// 转换注册的路由为工具
+	tools, err := convert.ConvertRoutesToTools(registeredRoutes, m.registeredSchemas)
+	if err != nil {
+		return fmt.Errorf("failed to convert routes to tools: %w", err)
+	}
+
+	m.toolsMu.Lock()
+	m.tools = tools
+	m.toolsMu.Unlock()
 
 	return nil
-}
-
-// haveToolsChanged checks if the tools list has changed
-func (m *GinMCP) haveToolsChanged(newTools []types.Tool) bool {
-	if len(m.tools) != len(newTools) {
-		return true
-	}
-
-	// Create maps for easier comparison
-	oldToolMap := make(map[string]types.Tool)
-	for _, tool := range m.tools {
-		oldToolMap[tool.Name] = tool
-	}
-
-	// Compare tools
-	for _, newTool := range newTools {
-		oldTool, exists := oldToolMap[newTool.Name]
-		if !exists {
-			return true
-		}
-		// Compare tool definitions (you might want to add more detailed comparison)
-		if oldTool.Description != newTool.Description {
-			return true
-		}
-	}
-
-	return false
-}
-
-// filterTools filters the tools based on configuration
-func (m *GinMCP) filterTools() {
-	if len(m.tools) == 0 {
-		return
-	}
-
-	var filteredTools []types.Tool
-	config := m.config // Use the GinMCP config
-
-	// Work with local copies to avoid mutating the caller's config
-	includeOps := config.IncludeOperations
-	includeTags := config.IncludeTags
-	excludeOps := config.ExcludeOperations
-	excludeTags := config.ExcludeTags
-
-	// Check for conflicting inclusion filters (prefer operations over tags)
-	if len(includeOps) > 0 && len(includeTags) > 0 {
-		if isDebugMode() {
-			log.Printf("Warning: Both IncludeOperations and IncludeTags are set. Preferring IncludeOperations.")
-		}
-		includeTags = nil
-	}
-
-	// Check for conflicting exclusion filters (prefer operations over tags)
-	if len(excludeOps) > 0 && len(excludeTags) > 0 {
-		if isDebugMode() {
-			log.Printf("Warning: Both ExcludeOperations and ExcludeTags are set. Preferring ExcludeOperations.")
-		}
-		excludeTags = nil
-	}
-
-	// Step 1: Apply inclusion filters (operations take precedence over tags)
-	if len(includeOps) > 0 {
-		includeMap := make(map[string]bool)
-		for _, op := range includeOps {
-			includeMap[op] = true
-		}
-		for _, tool := range m.tools {
-			if includeMap[tool.Name] {
-				filteredTools = append(filteredTools, tool)
-			}
-		}
-		m.tools = filteredTools
-		filteredTools = []types.Tool{}
-	} else if len(includeTags) > 0 {
-		// Include tools that have at least one matching tag
-		includeTagsMap := make(map[string]bool)
-		for _, tag := range includeTags {
-			includeTagsMap[tag] = true
-		}
-		for _, tool := range m.tools {
-			if hasMatchingTag(tool.Tags, includeTagsMap) {
-				filteredTools = append(filteredTools, tool)
-			}
-		}
-		m.tools = filteredTools
-		filteredTools = []types.Tool{}
-	}
-
-	// Step 2: Apply exclusion filters (operations take precedence over tags)
-	// Exclusion always wins - it runs on the result of inclusion filtering
-	if len(excludeOps) > 0 {
-		excludeMap := make(map[string]bool)
-		for _, op := range excludeOps {
-			excludeMap[op] = true
-		}
-		for _, tool := range m.tools {
-			if !excludeMap[tool.Name] {
-				filteredTools = append(filteredTools, tool)
-			}
-		}
-		m.tools = filteredTools
-	} else if len(excludeTags) > 0 {
-		// Exclude tools that have at least one matching tag
-		excludeTagsMap := make(map[string]bool)
-		for _, tag := range excludeTags {
-			excludeTagsMap[tag] = true
-		}
-		for _, tool := range m.tools {
-			if !hasMatchingTag(tool.Tags, excludeTagsMap) {
-				filteredTools = append(filteredTools, tool)
-			}
-		}
-		m.tools = filteredTools
-	}
-}
-
-// hasMatchingTag checks if any tag in the toolTags slice exists in the filterTags map
-func hasMatchingTag(toolTags []string, filterTags map[string]bool) bool {
-	for _, tag := range toolTags {
-		if filterTags[tag] {
-			return true
-		}
-	}
-	return false
 }
 
 // ExecuteToolWithDynamicURL executes a tool with a dynamically resolved baseURL.

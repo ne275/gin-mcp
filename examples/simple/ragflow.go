@@ -4,8 +4,8 @@ import (
 	"os"
 	"strings"
 
-	server "github.com/ckanthony/gin-mcp"
 	"github.com/gin-gonic/gin"
+	server "github.com/ne275/gin-mcp"
 )
 
 // ConfigureMCPForRAGFlow demonstrates how to configure MCP for RAGFlow scenarios
@@ -45,7 +45,7 @@ func configureMCPForRAGFlow(r *gin.Engine) {
 	})
 
 	// Mount MCP endpoint
-	mcp.Mount("/mcp")
+	mcp.Mount("/mcp", false)
 }
 
 // configureMCPForRAGFlowWithWorkflow shows workflow-specific configuration
@@ -66,7 +66,7 @@ func configureMCPForRAGFlowWithWorkflow(r *gin.Engine) {
 		return mcp.ExecuteToolWithResolver(operationID, parameters, workflowResolver)
 	})
 
-	mcp.Mount("/mcp")
+	mcp.Mount("/mcp", false)
 }
 
 // configureMCPForRAGFlowDirectly shows direct URL resolution for RAGFlow
@@ -87,7 +87,7 @@ func configureMCPForRAGFlowDirectly(r *gin.Engine) {
 		return mcp.ExecuteToolWithDynamicURL(operationID, parameters, endpoint)
 	})
 
-	mcp.Mount("/mcp")
+	mcp.Mount("/mcp", false)
 }
 
 // buildRAGFlowEndpoint constructs the RAGFlow endpoint from environment variables

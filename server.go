@@ -15,9 +15,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/ckanthony/gin-mcp/pkg/convert"
-	"github.com/ckanthony/gin-mcp/pkg/transport"
-	"github.com/ckanthony/gin-mcp/pkg/types"
+	"github.com/ne275/gin-mcp/pkg/convert"
+	"github.com/ne275/gin-mcp/pkg/transport"
+	"github.com/ne275/gin-mcp/pkg/types"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -798,7 +798,7 @@ func NewHeaderResolver(headerName string, fallback string) BaseURLResolver {
 		// 1. Thread-local storage
 		// 2. Context.Context passed through the call chain
 		// 3. Middleware that sets a global variable
-		
+
 		// For now, return fallback - see example usage for complete implementation
 		return fallback
 	}
@@ -821,7 +821,7 @@ func NewQuicknodeResolver(fallback string) BaseURLResolver {
 			}
 			return host
 		}
-		
+
 		return fallback
 	}
 }
@@ -837,7 +837,7 @@ func NewRAGFlowResolver(fallback string) BaseURLResolver {
 		if workflowURL := os.Getenv("RAGFLOW_WORKFLOW_URL"); workflowURL != "" {
 			return workflowURL
 		}
-		
+
 		// Try building from base URL and workflow ID
 		baseURL := os.Getenv("RAGFLOW_BASE_URL")
 		workflowID := os.Getenv("WORKFLOW_ID")
@@ -845,12 +845,12 @@ func NewRAGFlowResolver(fallback string) BaseURLResolver {
 			baseURL = strings.TrimSuffix(baseURL, "/")
 			return baseURL + "/workflow/" + workflowID
 		}
-		
+
 		// Try just base URL
 		if baseURL != "" {
 			return baseURL
 		}
-		
+
 		// Try generic HOST variable
 		if host := os.Getenv("HOST"); host != "" {
 			if !strings.HasPrefix(host, "http") {
@@ -858,7 +858,7 @@ func NewRAGFlowResolver(fallback string) BaseURLResolver {
 			}
 			return host
 		}
-		
+
 		return fallback
 	}
 }

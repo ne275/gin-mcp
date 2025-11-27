@@ -7,9 +7,9 @@ import (
 	"sync"
 	"testing"
 
-	transport "github.com/ckanthony/gin-mcp/pkg/transport"
-	"github.com/ckanthony/gin-mcp/pkg/types"
 	"github.com/gin-gonic/gin"
+	transport "github.com/ne275/gin-mcp/pkg/transport"
+	"github.com/ne275/gin-mcp/pkg/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -132,7 +132,7 @@ func TestSetupServerAndFilter(t *testing.T) {
 	engine.GET("/mcp/ignore", func(c *gin.Context) {}) // Should be ignored
 
 	mcp := New(engine, &Config{})
-	mcp.Mount("/mcp")
+	mcp.Mount("/mcp", false)
 	err := mcp.SetupServer()
 	assert.NoError(t, err)
 
@@ -849,7 +849,7 @@ func TestGinMCPWithDocs(t *testing.T) {
 	mcp.RegisterSchema("POST", "/products", nil, Product{})
 
 	// Mount MCP and setup server
-	mcp.Mount("/mcp")
+	mcp.Mount("/mcp", false)
 	err := mcp.SetupServer()
 	assert.NoError(t, err)
 

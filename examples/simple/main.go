@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	server "github.com/ckanthony/gin-mcp"
+	server "github.com/ne275/gin-mcp"
 	"github.com/gin-gonic/gin"
 )
 
@@ -141,7 +141,7 @@ func configureMCP(r *gin.Engine) {
 	mcp.RegisterSchema("PUT", "/products/:id", nil, UpdateProductRequest{})
 
 	// Mount MCP endpoint
-	mcp.Mount("/mcp")
+	mcp.Mount("/mcp", false)
 }
 
 // Handler functions
